@@ -1,0 +1,64 @@
+---
+title: "Fertility"
+author: "Thanh_Tam_Luu"
+date: "12/4/2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## Read this before analyzing the tree
+
+1 is N (diagnosis normal)
+0 is O (altered) - the business success is the chances of not being fertile
+
+```{r tree, echo=FALSE, message=FALSE}
+library(readr)
+fertility <- read_csv("fertility.csv")
+
+fertility$output <- gsub("N", "1", fertility$output)
+fertility$output <- gsub("O", "0", fertility$output)
+fertility$output <- as.numeric(fertility$output)
+
+library(rpart)
+library(rpart.plot)
+fertility_tree <- rpart(output~season+age+childish_disease+accident+surgical_inter+high_fever+frequency_alcohol+smoking+sitting, data=fertility, method="class")
+rpart.plot(fertility_tree, type=1, extra=1)
+
+```
+
+## Insight from fertility tree
+
+Age variable has the most splitting power. 
+
+```{r logistic, echo=FALSE, message=FALSE}
+fertility_logit <- glm(output~season+age+childish_disease+accident+surgical_inter+high_fever+frequency_alcohol+smoking+sitting, data=fertility, family="binomial")
+summary(fertility_logit)
+exp(1.7469)-1
+
+```
+
+## Insight from fertility logistic regression
+
+Accident is the most statistically significant. If there is an accident, the odds of success increase by 473%.  
+
+```{r perf, echo=FALSE, message=FALSE}
+library(ROCR)
+predict_logit <- predict(fertility_logit, fertility, type="response")
+predict_tree <- predict(fertility_tree, fertility, type="prob")
+
+pred_val_tree <- prediction(predict_tree[,1], fertility$output)
+pred_val_logit <- prediction(predict_logit, fertility$output)
+
+perf_tree <- performance(pred_val_tree, "tpr", "fpr")
+perf_logit <- performance(pred_val_logit, "tpr", "fpr")
+
+plot(perf_tree, col="black")
+plot(perf_logit, col="blue", add=TRUE)
+
+```
+
+## Insight from performance comparison
+
+The logistic regression is in this case better than the decision tree. The logistic regression is more inclined to true positive whereas the decision tree is inclined more to false positive.If there is an accident, the odds of success increase by 473%.
+
